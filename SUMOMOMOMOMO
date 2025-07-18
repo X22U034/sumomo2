@@ -1,0 +1,28 @@
+const uint8_t L1 = 3;   // 左モーター IN1
+const uint8_t L2 = 11;  // 左モーター IN2
+const uint8_t R1 = 9;   // 右モーター IN1
+const uint8_t R2 = 10;  // 右モーター IN2
+const uint8_t OSR = 15;
+const uint8_t OSL = 5;
+
+void setup() {
+  pinMode(L1, OUTPUT); pinMode(L2, OUTPUT);
+  pinMode(R1, OUTPUT); pinMode(R2, OUTPUT);
+  pinMode(OSR, INPUT);
+  pinMode(OSL, INPUT);
+}
+
+void loop()
+{
+  // 前進
+  analogWrite(L1, 255); analogWrite(L2,   0);
+  analogWrite(R1, 255); analogWrite(R2,   0);
+ 
+if(digitalRead(OSL) == LOW){
+  analogWrite(L1, 0); analogWrite(L2, 0);
+  analogWrite(R1, 0); analogWrite(R2, 0);
+  delay(1000);
+
+  
+}
+}
