@@ -1,0 +1,80 @@
+const uint8_t L1 = 3;   // 左モーター IN1
+const uint8_t L2 = 11;  // 左モーター IN2
+const uint8_t R1 = 9;   // 右モーター IN1
+const uint8_t R2 = 10;  // 右モーター IN2
+const uint8_t OSR = 15;  //対物右
+const uint8_t OSL = 5;  //対物左
+const uint8_t FSR = 14; //床右
+const uint8_t FSL = 4; //床左
+
+const int right = 0;
+const int left = 1;
+
+void setup() {
+  pinMode(L1, OUTPUT); pinMode(L2, OUTPUT);
+  pinMode(R1, OUTPUT); pinMode(R2, OUTPUT);
+  pinMode(OSR, INPUT);
+  pinMode(OSL, INPUT);
+}
+
+void loop()
+{
+  // 前進
+  //moveForward(255);
+  delay(1000);
+  //turnright(100);
+  
+ 
+if(digitalRead(OSL) == LOW){
+  analogWrite(L1, 0); analogWrite(L2, 255);
+  analogWrite(R1, 0); analogWrite(R2, 255);
+  delay(1000);
+  }
+if(digitalRead(FSR)== LOW){
+  analogWrite(L1, 10); analogWrite(L2, 0);
+  analogWrite(R1, 0); analogWrite(R2, 50);
+  delay(1000);
+  }
+if(digitalRead(FSL) == LOW){
+  
+  analogWrite(L1, 0); analogWrite(L2, 50);
+  analogWrite(R1, 10); analogWrite(R2, 0);
+  delay(1000);
+  }
+}
+
+void setMotorSpeed(int side, int speed)
+{
+   switch(side){
+    case left:
+      if(speed >= 0){
+        analogWrite(L1, speed); analogWrite(L2,   0);
+      }else{
+        speed = -speed;
+        analogWrite(L1, 0); analogWrite(L2,   speed);
+      }
+      break;
+    case right:
+      if(speed >= 0){
+        analogWrite(R1,speed);analogWrite(R2,0);
+        }else{
+          speed = -speed;
+          analogWrite(R1,0);analogWrite(R2,speed);
+        }
+        break;
+   }
+}
+void moveForward(int speed){
+  setMotorSpeed(right,speed);
+  setMotorSpeed(left,speed);
+}
+void turnright(int speed){
+  setMotorSpeed(left,speed);
+  speed = -speed;
+  setMotorSpeed(right,speed);
+}
+void turnleft(int speed){
+  setMotorSpeed(right,speed);
+  speed = -speed;
+  setMotorSpeed(left,speed);
+}
