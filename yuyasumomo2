@@ -1,0 +1,47 @@
+void setup() {
+  pinMode(L1, OUTPUT); pinMode(L2, OUTPUT);
+  pinMode(R1, OUTPUT); pinMode(R2, OUTPUT);
+  pinMode(OSR, INPUT); pinMode(OSL, INPUT);
+  pinMode(FSR, INPUT);  // 床センサー右
+  pinMode(FSL, INPUT);  // 床センサー左
+}
+
+void loop() {
+  static unsigned long actionStart = 0;   // 動作開始時刻
+  static int actionDuration = 0;          // 動作の長さ(ms)
+
+  // もし現在アクション中なら、一定時間経過するまで続行
+  if (millis() - actionStart < actionDuration) {
+    return; // ここで一旦戻る → その間もセンサーは監視可能
+  }
+
+  // --- ここから通常処理 ---
+  // 左の対物センサー
+  if (digitalRead(OSL) == LOW) {
+    analogWrite(L1, 0);   analogWrite(L2, 255);
+    analogWrite(R1, 0);   analogWrite(R2, 255);
+    actionStart = millis();   // delayを廃止しmillis管理 ---
+    actionDuration = 1000;    // 1秒間この動作を続ける
+  }
+
+  // 床センサー右
+  else if (digitalRead(FSR) == LOW) {
+    analogWrite(L1, 10);  analogWrite(L2, 0);
+    analogWrite(R1, 0);   analogWrite(R2, 50);
+    actionStart = millis();
+    actionDuration = 1000;
+  }
+
+  // 床センサー左
+  else if (digitalRead(FSL) == LOW) {
+    analogWrite(L1, 0);   analogWrite(L2, 50);
+    analogWrite(R1, 10);  analogWrite(R2, 0);
+    actionStart = millis();
+    actionDuration = 1000;
+  }
+
+  // 何もセンサーが反応していないとき → 前進
+  else {
+    moveForward(200);
+  }
+}
