@@ -1,46 +1,114 @@
+// ピン定義
+const uint8_t L1 = 3;   // 左モーター IN1
+const uint8_t L2 = 11;  // 左モーター IN2
+const uint8_t R1 = 9;   // 右モーター IN1
+const uint8_t R2 = 10;  // 右モーター IN2
+const uint8_t OSR = 15; // 対物センサー右
+const uint8_t OSL = 5;  // 対物センサー左
+const uint8_t FSR = 14; // 床センサー右
+const uint8_t FSL = 4;  // 床センサー左
+
+const int right = 0;
+const int left  = 1;
+
+// ---------------- モーター制御関数 ----------------
+void setMotorSpeed(int side, int speed) {
+  switch(side){
+    case left:
+      if(speed >= 0){
+        analogWrite(L1, speed); analogWrite(L2, 0);
+      } else {
+        speed = -speed;
+        analogWrite(L1, 0); analogWrite(L2, speed);
+      }
+      break;
+    case right:
+      if(speed >= 0){
+        analogWrite(R1, speed); analogWrite(R2, 0);
+      } else {
+        speed = -speed;
+        analogWrite(R1, 0); analogWrite(R2, speed);
+      }
+      break;
+  }
+}
+
+void moveForward(int speed){
+  setMotorSpeed(left, speed);
+  setMotorSpeed(right, speed);
+}
+
+void moveBackward(int speed){
+  setMotorSpeed(left, -speed);
+  setMotorSpeed(right, -speed);
+}
+
+void turnRight(int speed){
+  setMotorSpeed(left, speed);
+  setMotorSpeed(right, -speed);
+}
+
+// ---------------- スタートルーティン ----------------
+void startRoutine() {
+  unsigned long startTime = millis();
+
+  // 1. 5秒待機
+  while (millis() - startTime < 5000) {
+    moveForward(0); // 停止
+  }
+
+  // 2. 斜め右に出る (0.6秒)
+  startTime = millis();
+  while (millis() - startTime < 600) {
+    setMotorSpeed(left, 200);
+    setMotorSpeed(right, 150); // 少し右に傾ける
+  }
+
+  // 3. 直進 (1.0秒)
+  startTime = millis();
+  while (millis() - startTime < 1000) {
+    moveForward(200);
+  }
+
+  // 4. 左旋回 (90°相当、0.5秒)
+  startTime = millis();
+  while (millis() - startTime < 500) {
+    setMotorSpeed(left, -200);
+    setMotorSpeed(right, 200);
+  }
+
+  // 5. 直進 (1.0秒)
+  startTime = millis();
+  while (millis() - startTime < 1000) {
+    moveForward(255);
+  }
+}
+
+// ---------------- セットアップ ----------------
 void setup() {
   pinMode(L1, OUTPUT); pinMode(L2, OUTPUT);
   pinMode(R1, OUTPUT); pinMode(R2, OUTPUT);
   pinMode(OSR, INPUT); pinMode(OSL, INPUT);
-  pinMode(FSR, INPUT);  // 床センサー右
-  pinMode(FSL, INPUT);  // 床センサー左
+  pinMode(FSR, INPUT); pinMode(FSL, INPUT);
+
+  startRoutine();  // ← スタートルーティンを最初に実行
 }
 
+// ---------------- メインループ ----------------
 void loop() {
-  static unsigned long actionStart = 0;   // 動作開始時刻
-  static int actionDuration = 0;          // 動作の長さ(ms)
-
-  // もし現在アクション中なら、一定時間経過するまで続行
-  if (millis() - actionStart < actionDuration) {
-    return; // ここで一旦戻る → その間もセンサーは監視可能
-  }
-
-  // --- ここから通常処理 ---
-  // 左の対物センサー
+  // 通常戦闘処理
   if (digitalRead(OSL) == LOW) {
     analogWrite(L1, 0);   analogWrite(L2, 255);
     analogWrite(R1, 0);   analogWrite(R2, 255);
-    actionStart = millis();   // delayを廃止しmillis管理 ---
-    actionDuration = 1000;    // 1秒間この動作を続ける
   }
-
-  // 床センサー右
   else if (digitalRead(FSR) == LOW) {
     analogWrite(L1, 10);  analogWrite(L2, 0);
     analogWrite(R1, 0);   analogWrite(R2, 50);
-    actionStart = millis();
-    actionDuration = 1000;
   }
-
-  // 床センサー左
   else if (digitalRead(FSL) == LOW) {
     analogWrite(L1, 0);   analogWrite(L2, 50);
     analogWrite(R1, 10);  analogWrite(R2, 0);
-    actionStart = millis();
-    actionDuration = 1000;
   }
-
-  // 何もセンサーが反応していないとき → 前進
   else {
     moveForward(200);
   }
