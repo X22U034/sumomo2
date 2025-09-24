@@ -1,127 +1,145 @@
-// ---------------- ピン定義 ----------------
+// --- ピン定義 ---
 const uint8_t L1 = 3;   // 左モーター IN1
 const uint8_t L2 = 11;  // 左モーター IN2
 const uint8_t R1 = 9;   // 右モーター IN1
 const uint8_t R2 = 10;  // 右モーター IN2
+
 const uint8_t OSR = 15; // 対物センサー右
 const uint8_t OSL = 5;  // 対物センサー左
 const uint8_t FSR = 14; // 床センサー右
 const uint8_t FSL = 4;  // 床センサー左
 
-const int right = 0;
-const int left  = 1;
+// PWM の最大値
+#define MAX_DUTY 1000
+#define PWM_MAX  255
 
-// ---------------- モーター制御関数 ----------------
-void setMotorSpeed(int side, int speed) {
-  switch(side){
-    case left:
-      if(speed >= 0){
-        analogWrite(L1, speed); analogWrite(L2, 0);
-      } else {
-        speed = -speed;
-        analogWrite(L1, 0); analogWrite(L2, speed);
+// --- グローバル変数 ---
+unsigned long actionStart = 0;     // アクション開始時刻
+unsigned long actionDuration = 0;  // アクション時間
+bool inAction = false;             // アクション中フラグ
+
+// スタートルーチン管理
+bool startDone = false;
+int startStep = 0;
+unsigned long startStepStart = 0;
+
+// ---------------- set_duty ----------------
+void set_duty(int L, int R) {
+  if (L >= 0) {
+    analogWrite(L1, map(L, 0, MAX_DUTY, 0, PWM_MAX));
+    analogWrite(L2, 0);
+  } else {
+    analogWrite(L1, 0);
+    analogWrite(L2, map(-L, 0, MAX_DUTY, 0, PWM_MAX));
+  }
+
+  if (R >= 0) {
+    analogWrite(R1, map(R, 0, MAX_DUTY, 0, PWM_MAX));
+    analogWrite(R2, 0);
+  } else {
+    analogWrite(R1, 0);
+    analogWrite(R2, map(-R, 0, MAX_DUTY, 0, PWM_MAX));
+  }
+}
+
+void stopMove() { set_duty(0, 0); }
+
+// --- スタートルーチン（ノンブロッキング版） ---
+void runStartRoutine() {
+  unsigned long now = millis();
+
+  switch (startStep) {
+    case 0: // 5秒待機
+      stopMove();
+      if (now - startStepStart >= 5000) {
+        startStep = 1;
+        startStepStart = now;
       }
       break;
-    case right:
-      if(speed >= 0){
-        analogWrite(R1, speed); analogWrite(R2, 0);
-      } else {
-        speed = -speed;
-        analogWrite(R1, 0); analogWrite(R2, speed);
+
+    case 1: // 斜め右を向く (300ms)
+      set_duty(1000, -1000);
+      if (now - startStepStart >= 300) {
+        startStep = 2;
+        startStepStart = now;
       }
+      break;
+
+    case 2: // 前進 (500ms)
+      set_duty(1000, 1000);
+      if (now - startStepStart >= 500) {
+        startStep = 3;
+        startStepStart = now;
+      }
+      break;
+
+    case 3: // 左旋回 (400ms)
+      set_duty(-1000, 1000);
+      if (now - startStepStart >= 400) {
+        startStep = 4;
+        startStepStart = now;
+      }
+      break;
+
+    case 4: // 前進 (500ms)
+      set_duty(1000, 1000);
+      if (now - startStepStart >= 500) {
+        startStep = 5;
+        startStepStart = now;
+      }
+      break;
+
+    case 5: // 完了
+      stopMove();
+      startDone = true;
       break;
   }
 }
 
-void moveForward(int speed){
-  setMotorSpeed(left, speed);
-  setMotorSpeed(right, speed);
-}
-
-void moveBackward(int speed){
-  setMotorSpeed(left, -speed);
-  setMotorSpeed(right, -speed);
-}
-
-void turnRight(int speed){
-  setMotorSpeed(left, speed);
-  setMotorSpeed(right, -speed);
-}
-
-void turnLeft(int speed){
-  setMotorSpeed(left, -speed);
-  setMotorSpeed(right, speed);
-}
-
-// ---------------- スタートルーティン ----------------
-void startRoutine() {
-  unsigned long startTime = millis();
-
-  // 1. 5秒待機
-  while (millis() - startTime < 5000) {
-    moveForward(0); // 停止
-  }
-
-  // 2. 斜め右に出る (0.6秒)
-  startTime = millis();
-  while (millis() - startTime < 600) {
-    setMotorSpeed(left, 200);
-    setMotorSpeed(right, 150); // 少し右に傾ける
-  }
-
-  // 3. 直進 (1.0秒)
-  startTime = millis();
-  while (millis() - startTime < 1000) {
-    moveForward(200);
-  }
-
-  // 4. 左旋回 (90°相当、0.5秒)
-  startTime = millis();
-  while (millis() - startTime < 500) {
-    turnLeft(200);
-  }
-
-  // 5. 直進 (1.0秒)
-  startTime = millis();
-  while (millis() - startTime < 1000) {
-    moveForward(255);
-  }
-}
-
-// ---------------- セットアップ ----------------
 void setup() {
-  // モーター制御ピン
   pinMode(L1, OUTPUT); pinMode(L2, OUTPUT);
   pinMode(R1, OUTPUT); pinMode(R2, OUTPUT);
-
-  // センサー入力ピン
   pinMode(OSR, INPUT); pinMode(OSL, INPUT);
   pinMode(FSR, INPUT); pinMode(FSL, INPUT);
 
-  // 開始ルーティン実行
-  startRoutine();
+  startStepStart = millis(); // スタートルーチン開始時刻
 }
 
-// ---------------- メインループ ----------------
 void loop() {
-  if (digitalRead(OSL) == LOW) {
-    // 相手を左で検知 → 前進突撃
-    moveForward(255);
+  unsigned long now = millis();
+
+  // --- スタートルーチン中なら進行 ---
+  if (!startDone) {
+    runStartRoutine();
+    return;
   }
-  else if (digitalRead(FSR) == LOW && digitalRead(FSL) == LOW) {
-    // 両方床検知 → 後退
-    moveBackward(200);
+
+  // --- アクション中は継続処理 ---
+  if (inAction) {
+    if (now - actionStart >= actionDuration) {
+      inAction = false; // アクション終了
+    } else {
+      return; // アクション中は他の処理を無視
+    }
+  }
+
+  // --- センサー判定 ---
+  if (digitalRead(OSL) == LOW || digitalRead(OSR) == LOW) {
+    set_duty(1000, 1000);   // 相手検知 → 突進
   }
   else if (digitalRead(FSR) == LOW) {
-    // 右だけ床検知 → 左へ回避
-    turnLeft(200);
+    set_duty(-800, -200);   // 白線検知 → 左へ逃げる
+    actionStart = now;
+    actionDuration = 200;
+    inAction = true;
   }
   else if (digitalRead(FSL) == LOW) {
-    // 左だけ床検知 → 右へ回避
-    turnRight(200);
+    set_duty(-200, -800);   // 白線検知 → 右へ逃げる
+    actionStart = now;
+    actionDuration = 200;
+    inAction = true;
   }
   else {
-    // 探索モード（相手を探しながら前進）
-    moveForward(200);
+    set_duty(800, 800);     // 通常前進
   }
 }
