@@ -1,4 +1,4 @@
-// ピン定義
+// ---------------- ピン定義 ----------------
 const uint8_t L1 = 3;   // 左モーター IN1
 const uint8_t L2 = 11;  // 左モーター IN2
 const uint8_t R1 = 9;   // 右モーター IN1
@@ -48,6 +48,11 @@ void turnRight(int speed){
   setMotorSpeed(right, -speed);
 }
 
+void turnLeft(int speed){
+  setMotorSpeed(left, -speed);
+  setMotorSpeed(right, speed);
+}
+
 // ---------------- スタートルーティン ----------------
 void startRoutine() {
   unsigned long startTime = millis();
@@ -73,8 +78,7 @@ void startRoutine() {
   // 4. 左旋回 (90°相当、0.5秒)
   startTime = millis();
   while (millis() - startTime < 500) {
-    setMotorSpeed(left, -200);
-    setMotorSpeed(right, 200);
+    turnLeft(200);
   }
 
   // 5. 直進 (1.0秒)
@@ -86,30 +90,38 @@ void startRoutine() {
 
 // ---------------- セットアップ ----------------
 void setup() {
+  // モーター制御ピン
   pinMode(L1, OUTPUT); pinMode(L2, OUTPUT);
   pinMode(R1, OUTPUT); pinMode(R2, OUTPUT);
+
+  // センサー入力ピン
   pinMode(OSR, INPUT); pinMode(OSL, INPUT);
   pinMode(FSR, INPUT); pinMode(FSL, INPUT);
 
-  startRoutine();  // ← スタートルーティンを最初に実行
+  // 開始ルーティン実行
+  startRoutine();
 }
 
 // ---------------- メインループ ----------------
 void loop() {
-  // 通常戦闘処理
   if (digitalRead(OSL) == LOW) {
-    analogWrite(L1, 0);   analogWrite(L2, 255);
-    analogWrite(R1, 0);   analogWrite(R2, 255);
+    // 相手を左で検知 → 前進突撃
+    moveForward(255);
+  }
+  else if (digitalRead(FSR) == LOW && digitalRead(FSL) == LOW) {
+    // 両方床検知 → 後退
+    moveBackward(200);
   }
   else if (digitalRead(FSR) == LOW) {
-    analogWrite(L1, 10);  analogWrite(L2, 0);
-    analogWrite(R1, 0);   analogWrite(R2, 50);
+    // 右だけ床検知 → 左へ回避
+    turnLeft(200);
   }
   else if (digitalRead(FSL) == LOW) {
-    analogWrite(L1, 0);   analogWrite(L2, 50);
-    analogWrite(R1, 10);  analogWrite(R2, 0);
+    // 左だけ床検知 → 右へ回避
+    turnRight(200);
   }
   else {
+    // 探索モード（相手を探しながら前進）
     moveForward(200);
   }
 }
