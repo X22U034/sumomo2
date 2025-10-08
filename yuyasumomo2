@@ -4,10 +4,10 @@ const uint8_t L2 = 11;  // 左モーター IN2
 const uint8_t R1 = 9;   // 右モーター IN1
 const uint8_t R2 = 10;  // 右モーター IN2
 
-const uint8_t OSR = 15; // 対物センサー右
-const uint8_t OSL = 5;  // 対物センサー左
+const uint8_t OSR = 4; // 対物センサー右
+const uint8_t OSL = 15;  // 対物センサー左
 const uint8_t FSR = 14; // 床センサー右
-const uint8_t FSL = 4;  // 床センサー左
+const uint8_t FSL = 5;  // 床センサー左
 
 // PWM の最大値
 #define MAX_DUTY 1000
