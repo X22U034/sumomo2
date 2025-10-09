@@ -1,0 +1,311 @@
+#include "CytronMakerSumo.h"
+const int potPin = A5;  // A5に接続
+ 
+// エッジセンサー閾値
+#define EDGE_L_THRESHOLD 357
+#define EDGE_R_THRESHOLD 344
+ 
+// 方向の定数
+#define LEFT 0
+#define RIGHT 1
+#define CENTER 2
+ 
+// 探索方向　searchDirに0が入る
+int searchDir = LEFT;
+ 
+// スーパーマリオのメロディーの音符と長さを定義
+int melodyPitch[] = { NOTE_E5, NOTE_E5, 0, NOTE_E5, 0, NOTE_C5, NOTE_E5, 0, NOTE_G5 };
+int melodyDuration[] = { 10, 10, 10, 10, 10, 10, 10, 10, 10 };  // 10ミリ秒
+ 
+int potValue = 0;
+int str = 0;
+ 
+ 
+void setup() {
+  Serial.begin(9600);
+  MakerSumo.begin();  //コントローラーの初期化
+ 
+  MakerSumo.playMelody(melodyPitch, melodyDuration, 9);  //(音符, 音符の長さ, 全体の音符の数)
+ 
+  // スタートボタンが押されて放されるまで待つ
+  while (digitalRead(START))
+    ;
+  // ボタンが押されるまで待つ
+  // [;]だけのためループ処理なし
+  // ボタンが押されていない状態( digitalRead() が HIGH(=1) を返す)の間ループ
+  while (!digitalRead(START))
+    ;
+  // 押されたら、放されるまで待つ
+  // ボタンが押されている状態( digitalRead() が LOW(=0) を返す)の間ループ
+ 
+  // ユーザーLEDをオンにする
+  digitalWrite(LED, HIGH);
+ 
+  // スタートルーチンを選択
+  potValue = analogRead(potPin);  // 0〜1023の範囲
+ 
+  if (potValue < 600) {
+    startRoutine1();
+    str = 1;
+  } else {
+    startRoutine2();
+    str = 2;
+  }
+}
+ 
+ 
+/*******************************************************************************
+  * Main program loop.
+  *******************************************************************************/
+void loop() {
+  switch (str) {
+    case 1:
+      // potValueが0～599
+      strategy1();
+      break;
+    case 2:
+      // potValueが600~1023
+      strategy2();
+      break;
+  }
+ 
+  // ボタンが押される(LOW)とロボット停止
+  if (digitalRead(START) == 0) {
+    MakerSumo.setMotorSpeed(MOTOR_L, 0);
+    MakerSumo.setMotorSpeed(MOTOR_R, 0);
+ 
+    // 電源を切るまで復帰できないように完全停止する　;は空文で、この行でプロフラムは完全停止
+    while (1)
+      ;
+  }
+}
+ 
+ 
+/*******************************************************************************
+  * Strategy.
+  *******************************************************************************/
+// 作戦1
+void strategy1() {
+  // 左側のセンサーが白線を検知
+  if (analogRead(EDGE_L) < EDGE_L_THRESHOLD) {
+    // 後退して右にＵターン
+    backoff(RIGHT);
+ 
+    // ^=はXOR演算子 0→1または1→0に変わり敵探索方向を反転
+    searchDir ^= 1;
+  }
+  // 右側のセンサーが白線を検知
+  else if (analogRead(EDGE_R) < EDGE_R_THRESHOLD) {
+    // 後退して左にＵターン
+    backoff(LEFT);
+ 
+    searchDir ^= 1;
+  }
+  // ノー検知
+  else {
+    // 相手が検出されるまで検知し続ける　初期値がHIGH
+    if ((digitalRead(OPP_FC) == HIGH) && (digitalRead(OPP_FL) == HIGH) && (digitalRead(OPP_FR) == HIGH) && (digitalRead(OPP_L) == HIGH) && (digitalRead(OPP_R) == HIGH)) {
+      search(searchDir);
+    }
+    // 相手を視界に捉えたら攻撃する
+    else {
+      attack();
+    }
+  }
+}
+ 
+// 作戦2
+void strategy2() {
+  // 左側のセンサーが白線を検知
+  if (analogRead(EDGE_L) < EDGE_L_THRESHOLD) {
+    // 90度右に曲がる
+    MakerSumo.setMotorSpeed(MOTOR_L, 255);
+    MakerSumo.setMotorSpeed(MOTOR_R, 0);
+    delay(100);
+ 
+    // ^=はXOR演算子 0→1または1→0に変わり敵探索方向を反転
+    searchDir ^= 1;
+  }
+  // 右側のセンサーが白線を検知
+  else if (analogRead(EDGE_R) < EDGE_R_THRESHOLD) {
+    // 90度左に曲がる
+    MakerSumo.setMotorSpeed(MOTOR_L, 0);
+    MakerSumo.setMotorSpeed(MOTOR_R, 255);
+    delay(100);
+ 
+    searchDir ^= 1;
+  }
+  // ノー検知
+  else {
+    // 相手が検出されるまで検知し続ける　初期値がHIGH
+    if ((digitalRead(OPP_FC) == HIGH) && (digitalRead(OPP_FL) == HIGH) && (digitalRead(OPP_FR) == HIGH) && (digitalRead(OPP_L) == HIGH) && (digitalRead(OPP_R) == HIGH)) {
+      // Go straight.
+      MakerSumo.setMotorSpeed(MOTOR_L, 250);
+      MakerSumo.setMotorSpeed(MOTOR_R, 255);
+      delay(80);
+    }
+    // 相手を視界に捉えたら攻撃する
+    else {
+      attack();
+    }
+  }
+}
+ 
+ 
+/*******************************************************************************
+  * Start Routine
+  * This function should be called once only when the game start.
+  * ゲーム開始時に一度だけ呼び出される
+  *******************************************************************************/
+void startRoutine1() {
+  // 開始遅延　1000ミリ秒＝1秒
+  delay(1000);
+ 
+  // 45度右に曲がる
+  MakerSumo.setMotorSpeed(MOTOR_L, 255);
+  MakerSumo.setMotorSpeed(MOTOR_R, 0);
+  delay(50);
+ 
+  // Go straight.
+  MakerSumo.setMotorSpeed(MOTOR_L, 250);
+  MakerSumo.setMotorSpeed(MOTOR_R, 255);
+  delay(80);
+ 
+  // 相手が検出されるまで左に曲がります。
+  MakerSumo.setMotorSpeed(MOTOR_L, 0);
+  MakerSumo.setMotorSpeed(MOTOR_R, 255);
+  delay(100);
+ 
+  // スケッチが動き始めてからの経過時間(millis＝ミリ秒)をstartTimestampに入れる
+  unsigned long startTimestamp = millis();
+  while (digitalRead(OPP_FC)) {
+    // タイムアウト(0.1秒)後に相手が見つからない場合終了する
+    // startTimestampー現在時刻(millis)からこのループが始まってからの経過時間を計算
+    if (millis() - startTimestamp > 100) {
+      break;
+    }
+  }
+}
+ 
+void startRoutine2() {
+  // 開始遅延　1000ミリ秒＝1秒
+  delay(1000);
+ 
+  // 45度左に曲がる
+  MakerSumo.setMotorSpeed(MOTOR_L, 0);
+  MakerSumo.setMotorSpeed(MOTOR_R, 255);
+  delay(50);
+ 
+  // Go straight.
+  MakerSumo.setMotorSpeed(MOTOR_L, 250);
+  MakerSumo.setMotorSpeed(MOTOR_R, 255);
+  delay(80);
+ 
+  // 相手が検出されるまで右に曲がります。
+  MakerSumo.setMotorSpeed(MOTOR_L, 255);
+  MakerSumo.setMotorSpeed(MOTOR_R, 0);
+  delay(100);
+ 
+  // スケッチが動き始めてからの経過時間(millis＝ミリ秒)をstartTimestampに入れる
+  unsigned long startTimestamp = millis();
+  while (digitalRead(OPP_FC)) {
+    // タイムアウト(0.1秒)後に相手が見つからない場合終了する
+    // startTimestampー現在時刻(millis)からこのループが始まってからの経過時間を計算
+    if (millis() - startTimestamp > 100) {
+      break;
+    }
+  }
+}
+ 
+ 
+/*******************************************************************************
+  * Search
+  *******************************************************************************/
+void search(int dir) {
+  //  円を描くように動く　引数(dir)によって左回りか右回りか決まる
+  if (dir == LEFT) {
+    MakerSumo.setMotorSpeed(MOTOR_L, 60);
+    MakerSumo.setMotorSpeed(MOTOR_R, 80);
+  } else {
+    MakerSumo.setMotorSpeed(MOTOR_L, 80);
+    MakerSumo.setMotorSpeed(MOTOR_R, 60);
+  }
+}
+ 
+ 
+/*******************************************************************************
+  * Attack
+  * Track and attack the opponent in full speed.
+  * Do nothing if opponent is not found.
+  * 相手が見つからない場合は何もしない
+  *******************************************************************************/
+void attack() {
+  // Opponent in front center.
+  // Go straight in full speed.
+  if (digitalRead(OPP_FC) == LOW) {
+    MakerSumo.setMotorSpeed(MOTOR_L, 255);
+    MakerSumo.setMotorSpeed(MOTOR_R, 255);
+  }
+ 
+  // Opponent in front left.
+  // Turn left.
+  else if (digitalRead(OPP_FL) == LOW) {
+    MakerSumo.setMotorSpeed(MOTOR_L, 0);
+    MakerSumo.setMotorSpeed(MOTOR_R, 255);
+  }
+ 
+  // Opponent in front right.
+  // Turn right.
+  else if (digitalRead(OPP_FR) == LOW) {
+    MakerSumo.setMotorSpeed(MOTOR_L, 255);
+    MakerSumo.setMotorSpeed(MOTOR_R, 0);
+  }
+ 
+  // Opponent in left.
+  // Turn left.
+  else if (digitalRead(OPP_L) == LOW) {
+    MakerSumo.setMotorSpeed(MOTOR_L, -100);
+    MakerSumo.setMotorSpeed(MOTOR_R, 100);
+    delay(300);
+  }
+ 
+  // Opponent in right.
+  // Turn right.
+  else if (digitalRead(OPP_R) == LOW) {
+    MakerSumo.setMotorSpeed(MOTOR_L, 100);
+    MakerSumo.setMotorSpeed(MOTOR_R, -100);
+    delay(300);
+  }
+}
+ 
+ 
+/*******************************************************************************
+  * Back Off
+  * This function should be called when the ring edge is detected.
+  * 白線検知の際に呼び出される
+  *******************************************************************************/
+void backoff(int dir) {
+  // Reverse
+  MakerSumo.setMotorSpeed(MOTOR_L, -50);
+  MakerSumo.setMotorSpeed(MOTOR_R, -50);
+  delay(300);
+ 
+  // Rotate..
+ 
+  if (dir == LEFT) {
+    // Rotate left backward.
+    MakerSumo.setMotorSpeed(MOTOR_L, -50);
+    MakerSumo.setMotorSpeed(MOTOR_R, 10);
+  } else if (dir == RIGHT) {
+    // Rotate right backward.
+    MakerSumo.setMotorSpeed(MOTOR_L, 10);
+    MakerSumo.setMotorSpeed(MOTOR_R, -50);
+  }
+  delay(500);
+ 
+  // Stop the motors.
+  MakerSumo.setMotorSpeed(MOTOR_L, 0);
+  MakerSumo.setMotorSpeed(MOTOR_R, 0);
+  delay(50);
+}
+ 
