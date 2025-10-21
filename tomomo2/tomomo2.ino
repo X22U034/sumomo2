@@ -1,21 +1,13 @@
 #include "lib/fast_digital_rw.hpp" // 高速デジタル入出力ライブラリ
+#include "lib/MOTOR.h"						 // モーター制御ライブラリ
 
 // --- ピン定義 ---
-#define M1_PWM1 = 3;	// 左モーター IN1
-#define M1_PWM2 = 11; // 左モーター IN2
-#define M2_PWM1 = 9;	// 右モーター IN1
-#define M2_PWM2 = 10; // 右モーター IN2
-
 #define FSL = 4;	// 床センサー左
 #define SL2 = A5; // 対物センサー左
 #define SR1 = A4; // クロス対物センサー右
 #define SL1 = A3; // クロス対物センサー左
-#define SR2 = A1; // 対物センサー右
+#define SR2 = A2; // 対物センサー右
 #define FSR = A0; // 床センサー右
-
-// PWM の最大値
-#define MAX_DUTY 1000
-#define PWM_MAX 255
 
 // --- グローバル変数 ---
 unsigned long actionStart = 0;		// アクション開始時刻
@@ -26,32 +18,6 @@ bool inAction = false;						// アクション中フラグ
 bool startDone = false;
 int startStep = 0;
 unsigned long startStepStart = 0;
-
-// ---------------- set_duty ----------------
-void set_duty(int m1duty, int m2duty)
-{
-	if (m1duty >= 0)
-	{
-		analogWrite(M1_PWM1, map(m1duty, 0, MAX_DUTY, 0, PWM_MAX));
-		analogWrite(M1_PWM2, 0);
-	}
-	else
-	{
-		analogWrite(M1_PWM1, 0);
-		analogWrite(M1_PWM2, map(-m1duty, 0, MAX_DUTY, 0, PWM_MAX));
-	}
-
-	if (m2duty >= 0)
-	{
-		analogWrite(M2_PWM1, map(m2duty, 0, MAX_DUTY, 0, PWM_MAX));
-		analogWrite(M2_PWM2, 0);
-	}
-	else
-	{
-		analogWrite(M2_PWM1, 0);
-		analogWrite(M2_PWM2, map(-m2duty, 0, MAX_DUTY, 0, PWM_MAX));
-	}
-}
 
 // --- スタートルーチン（ノンブロッキング版） ---
 void runStartRoutine()
