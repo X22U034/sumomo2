@@ -53,12 +53,11 @@ void MOTOR_REVERSE(int m1, int m2)
 /**
  * @brief SET_RECHARGE
  * モーターのリミッター値を設定する関数
- * recharge値は0~100の範囲で設定可能
- * @param re 設定するリミッター値
+ * recharge値はduty比の最大値から百分率を引いた値で設定する
+ * 例えば、リミッターを5%に設定する場合、recharge値は950となる
+ * @param re リミッター値(0~100)
  * @return void
- * @note 範囲外の値が指定された場合、デフォルト値の95に設定される
- * @note リミッター値はモーター出力の最大値を百分率で表す
- * @note 例: SET_RECHARGE(80); // リミッター値を80%に設定
+ * @note 範囲外の値が指定された場合、デフォルト値の950に設定される
  */
 void SET_RECHARGE(int re)
 {
