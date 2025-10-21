@@ -130,16 +130,24 @@ void loop()
 	{
 		set_duty(1000, 1000); // 相手検知 → 突進
 	}
-	else if (!dr(SL2))
+	else if (!dr(SL1))
 	{
 		set_duty(-100, 1000); // 相手左検知 → 左旋回
 	}
-	else if (!dr(SR2))
+	else if (!dr(SR1))
 	{
 		set_duty(1000, -100); // 相手右検知 → 右旋回
 	}
+	else if (!dr(SL2))
+	{
+		set_duty(-1000, 1000); // 相手左検知 → 左旋回
+	}
+	else if (!dr(SR2))
+	{
+		set_duty(1000, -1000); // 相手右検知 → 右旋回
+	}
 	else
 	{
-		set_duty(1000, 1000); // 通常前進
+		set_duty(300, 300); // 通常前進
 	}
 }
