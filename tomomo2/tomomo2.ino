@@ -1,5 +1,4 @@
-#include "lib/fast_digital_rw.hpp" // 高速デジタル入出力ライブラリ
-#include "lib/MOTOR.h"						 // モーター制御ライブラリ
+#include "lib/SD3mini.h" // SD3miniライブラリ
 
 // --- ピン定義 ---
 #define FSL = 4;	// 床センサー左
@@ -71,21 +70,19 @@ void runStartRoutine()
 
 void setup()
 {
-	pinMode(M1_PWM1, OUTPUT);
-	pinMode(M1_PWM2, OUTPUT);
-	pinMode(M2_PWM1, OUTPUT);
-	pinMode(M2_PWM2, OUTPUT);
+	// ピンモード設定
 	pinMode(SL1, INPUT);
 	pinMode(SR1, INPUT);
 	pinMode(SL2, INPUT);
 	pinMode(SR2, INPUT);
 	pinMode(FSR, INPUT);
 	pinMode(FSL, INPUT);
-
 	startStepStart = millis(); // スタートルーチン開始時刻
-	SET_MOTOR_RAMP(50);				 // モーターの加減速設定
-	SET_MOTOR_RECHARGE(5);		 // モーターリミッター設定
-	SET_MOTOR_REVERSE(1, 1);	 // モーター反転設定 変更なし
+
+	SETUP_MOTOR();					 // モーター初期設定
+	SET_MOTOR_RAMP(50);			 // モーターの加減速設定
+	SET_MOTOR_RECHARGE(5);	 // モーターリミッター設定
+	SET_MOTOR_REVERSE(1, 1); // モーター反転設定 変更なし
 }
 
 void loop()
