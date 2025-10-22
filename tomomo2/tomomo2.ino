@@ -80,7 +80,7 @@ void setup()
 	startStepStart = millis(); // スタートルーチン開始時刻
 
 	SETUP_MOTOR();					 // モーター初期設定
-	SET_MOTOR_RAMP(50);			 // モーターの加減速設定
+	SET_MOTOR_RAMP(5);			 // モーターの加減速設定
 	SET_MOTOR_RECHARGE(5);	 // モーターリミッター設定
 	SET_MOTOR_REVERSE(1, 1); // モーター反転設定 変更なし
 }
