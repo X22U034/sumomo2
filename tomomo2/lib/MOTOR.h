@@ -3,10 +3,10 @@
 
 // モーター
 // --- ピン定義 ---
-#define M1_PWM1 3	 // 左モーター IN1
-#define M1_PWM2 11 // 左モーター IN2
-#define M2_PWM1 9	 // 右モーター IN1
-#define M2_PWM2 10 // 右モーター IN2
+#define MZ_M1_PWM1 3	// 左モーター IN1
+#define MZ_M1_PWM2 11 // 左モーター IN2
+#define MZ_M2_PWM1 9	// 右モーター IN1
+#define MZ_M2_PWM2 10 // 右モーター IN2
 
 // PWM の最大値
 #define MAX_DUTY 1000
@@ -26,7 +26,7 @@ typedef struct
 Motor m;
 
 /*
-void MOTOR_ENABLE(int n)
+void SET_MOTOR_ENABLE(int n)
 {
 	digitalWrite(L_EN1,n);
 	digitalWrite(R_EN1,n);
@@ -35,8 +35,31 @@ void MOTOR_ENABLE(int n)
 }
 */
 
+// モーター初期設定
+/**
+ * @brief SETUP_MOTOR
+ * モーター制御用ピンの初期設定を行う関数
+ * OUTPUTモードに設定する
+ * @return void
+ */
+void SETUP_MOTOR()
+{
+	pinMode(MZ_M1_PWM1, OUTPUT);
+	pinMode(MZ_M1_PWM2, OUTPUT);
+	pinMode(MZ_M2_PWM1, OUTPUT);
+	pinMode(MZ_M2_PWM2, OUTPUT);
+}
+
 // モーターの駆動反転[1:正転,-1:反転]
-void MOTOR_REVERSE(int m1, int m2)
+/**
+ * @brief SET_MOTOR_REVERSE
+ * モーターの駆動反転を設定する関数
+ * @param m1 モーター1の反転設定値(1 or -1)
+ * @param m2 モーター2の反転設定値(1 or -1)
+ * @return void
+ * @note 例: SET_MOTOR_REVERSE(1, -1); // モーター1は正転、モーター2は反転
+ */
+void SET_MOTOR_REVERSE(int m1, int m2)
 {
 	if (m1 * m2 == -1 || m1 * m2 == 1) //[1 or -1]の検出
 	{
@@ -97,10 +120,21 @@ void SET_MOTOR_RAMP(int ramp)
 }
 
 // 左右のモーターの出力duty比を取得
+/**
+ * @brief GET_M1PWMDUTY
+ * モーター1の現在のPWM出力値を取得する関数
+ * @return int モーター1のPWM出力値[-1000~1000]
+ */
 int GET_M1PWMDUTY()
 {
 	return m.target1;
 }
+
+/**
+ * @brief GET_M2PWMDUTY
+ * モーター2の現在のPWM出力値を取得する関数
+ * @return int モーター2のPWM出力値[-1000~1000]
+ */
 int GET_M2PWMDUTY()
 {
 	return m.target2;
@@ -158,6 +192,12 @@ bool MOTOR_BLUNT()
 	return updated;
 }
 
+/**
+ * @brief SET_M1PWMDUTY
+ * モーター1のPWM出力を設定する関数
+ * @param m1 PWM出力値[-1000~1000]
+ * @return void
+ */
 void SET_M1PWMDUTY(int m1)
 {
 	static int d1 = 0;
@@ -188,6 +228,12 @@ void SET_M1PWMDUTY(int m1)
 	}
 }
 
+/**
+ * @brief SET_M2PWMDUTY
+ * モーター2のPWM出力を設定する関数
+ * @param m2 PWM出力値[-1000~1000]
+ * @return void
+ */
 void SET_M2PWMDUTY(int m2)
 {
 	static int d2 = 0;
@@ -270,57 +316,25 @@ void set_duty(int m1duty, int m2duty)
 		// モーター1の出力設定
 		if (m.duty1 >= 0)
 		{
-			analogWrite(M1_PWM1, map(m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
-			analogWrite(M1_PWM2, 0);
+			analogWrite(MZ_M1_PWM1, map(m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
+			analogWrite(MZ_M1_PWM2, 0);
 		}
 		else
 		{
-			analogWrite(M1_PWM1, 0);
-			analogWrite(M1_PWM2, map(-m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
+			analogWrite(MZ_M1_PWM1, 0);
+			analogWrite(MZ_M1_PWM2, map(-m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
 		}
 
 		// モーター2の出力設定
 		if (m.duty2 >= 0)
 		{
-			analogWrite(M2_PWM1, map(m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
-			analogWrite(M2_PWM2, 0);
+			analogWrite(MZ_M2_PWM1, map(m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
+			analogWrite(MZ_M2_PWM2, 0);
 		}
 		else
 		{
-			analogWrite(M2_PWM1, 0);
-			analogWrite(M2_PWM2, map(-m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
-		}
-	}
-}
-
-// loop内で定期的に呼び出す関数
-void update_motors()
-{
-	// MOTOR_BLUNTを実行し、値が更新されたらモーター出力を設定
-	if (MOTOR_BLUNT())
-	{
-		// モーター1の出力設定
-		if (m.duty1 >= 0)
-		{
-			analogWrite(M1_PWM1, map(m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
-			analogWrite(M1_PWM2, 0);
-		}
-		else
-		{
-			analogWrite(M1_PWM1, 0);
-			analogWrite(M1_PWM2, map(-m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
-		}
-
-		// モーター2の出力設定
-		if (m.duty2 >= 0)
-		{
-			analogWrite(M2_PWM1, map(m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
-			analogWrite(M2_PWM2, 0);
-		}
-		else
-		{
-			analogWrite(M2_PWM1, 0);
-			analogWrite(M2_PWM2, map(-m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
+			analogWrite(MZ_M2_PWM1, 0);
+			analogWrite(MZ_M2_PWM2, map(-m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
 		}
 	}
 }
