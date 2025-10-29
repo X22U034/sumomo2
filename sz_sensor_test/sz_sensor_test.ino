@@ -1,25 +1,42 @@
-#include "lib/fast_digital_rw.hpp"  // 高速デジタル入出力ライブラリ
+#include "lib/fast_digital_rw.hpp" // 高速デジタル入出力ライブラリ
 
-#define SL2 A5  // 対物センサー左
-#define SR2 A2  // 対物センサー右
+void setup()
+{
+	Serial.begin(9600); // シリアル通信開始
+	// MOTOR ピン3, 11, 9, 10, 13, A6 以外をINPUT_PULLUPに設定
 
-void setup() {
-  Serial.begin(115200);  // シリアル通信開始
-  pinMode(SL2, INPUT);
-  pinMode(SR2, INPUT);
-  pinMode(13,OUTPUT);
+	for (uint8_t i = 0; i <= A7; i++)
+	{
+		switch (i)
+		{
+		case 3:
+		case 9:
+		case 10:
+		case 11:
+		case 13:
+		case A6:
+			break;
 
-  Serial.println("=== SR2 / SL2 センサー動作チェック開始 ===");
-  Serial.println("黒=1, 白=0 （HIGH/LOW表示）");
+		default:
+			pinMode(i, INPUT_PULLUP);
+		}
+	}
+
+	pinMode(13, OUTPUT);
+	pinMode(A6, OUTPUT);
+
+	Serial.println("センサー動作チェック");
 }
 
-void loop() {
-  bool sl = digitalRead(SL2);   // 左センサー読み取り
-  bool sr = digitalRead(SR2);  // 右センサー読み取り
-  digitalWrite(13, sl);
-  Serial.print("SL2(左): ");
-  Serial.print(sl);
-  Serial.print("   SR2(右): ");
-  Serial.println(sr);
-
+void loop()
+{
+	// 1~A6の状態を一覧表示
+	for (uint8_t i = 1; i <= A6; i++)
+	{
+		Serial.print(i);
+		Serial.print(":");
+		Serial.print(dr(i));
+		Serial.print("  ");
+	}
+	Serial.println();
 }
