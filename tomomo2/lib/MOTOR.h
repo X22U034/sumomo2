@@ -82,7 +82,7 @@ void SET_MOTOR_REVERSE(int m1, int m2)
  * @return void
  * @note 範囲外の値が指定された場合、デフォルト値の950に設定される
  */
-void SET_RECHARGE(int re)
+void SET_MOTOR_RECHARGE(int re)
 {
 	if (re < 0 || re > 100)
 	{
@@ -157,7 +157,9 @@ bool MOTOR_BLUNT()
 	unsigned long current_time = millis();
 	if (current_time - last_time >= 1) // 1ms以上経過した
 	{
+		// 更新時間を記録
 		last_time = current_time;
+
 		if (m.duty1 < m.target1)
 		{
 			m.duty1 += m.ramp;
