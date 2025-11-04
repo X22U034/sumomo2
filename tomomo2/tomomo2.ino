@@ -1,12 +1,12 @@
 #include "lib/SD3mini.h" // SD3miniライブラリ
 
 // --- ピン定義 ---
-#define FSL = 4;	// 床センサー左
-#define SL2 = A5; // 対物センサー左
-#define SR1 = A4; // クロス対物センサー右
-#define SL1 = A3; // クロス対物センサー左
-#define SR2 = A2; // 対物センサー右
-#define FSR = A0; // 床センサー右
+#define FSL 4	 // 床センサー左
+#define FSR A4 // 床センサー右
+#define SR1 A3 // クロス対物センサー右
+#define SL1 A2 // クロス対物センサー左
+#define SL2 A1 // 対物センサー左
+#define SR2 A0 // 対物センサー右
 
 // --- グローバル変数 ---
 unsigned long actionStart = 0;		// アクション開始時刻
