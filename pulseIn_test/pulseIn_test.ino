@@ -1,14 +1,16 @@
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  pinMode(7, INPUT);
-  pinMode(15, OUTPUT);
+  // for (int i = 0; i < 9; i++) {
+    pinMode(5, INPUT);
+  //}
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  
-  Serial.print(pulseIn(7, HIGH, 30000));
-  Serial.print(", ");
+  // for (int i = 0; i < 9; i++) {
+    Serial.print(pulseIn(5, HIGH, 40000));
+    Serial.print(", ");
+  // }
   Serial.println();
 }
