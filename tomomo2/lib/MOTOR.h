@@ -3,9 +3,9 @@
 
 // モーター
 // --- ピン定義 ---
-#define MZ_M1_PWM1 3	// 左モーター IN1
+#define MZ_M1_PWM1 3  // 左モーター IN1
 #define MZ_M1_PWM2 11 // 左モーター IN2
-#define MZ_M2_PWM1 9	// 右モーター IN1
+#define MZ_M2_PWM1 9  // 右モーター IN1
 #define MZ_M2_PWM2 10 // 右モーター IN2
 
 // PWM の最大値
@@ -16,9 +16,9 @@ typedef struct
 {
 	int duty1 = 0;
 	int duty2 = 0;
-	int ramp = 50;			// 1msあたりのduty増減値
+	int ramp = 50;		// 1msあたりのduty増減値
 	int recharge = 950; // 出力値のリミッター値(0~1000)
-	int rev1 = 1;				// モーター反転(1:正転,-1:逆転)
+	int rev1 = 1;		// モーター反転(1:正転,-1:逆転)
 	int rev2 = 1;
 	int target1 = 0; // 各モータの目標値
 	int target2 = 0;
@@ -164,7 +164,7 @@ bool MOTOR_BLUNT()
 		{
 			m.duty1 += m.ramp;
 			if (m.duty1 > m.target1) // dutyを加算して超えた場合
-				m.duty1 = m.target1;	 // 目標値と揃える
+				m.duty1 = m.target1; // 目標値と揃える
 			updated = true;
 		}
 		else if (m.duty1 > m.target1)
@@ -311,32 +311,31 @@ void set_duty(int m1duty, int m2duty)
 	m.target1 = m1duty * m.rev1;
 	m.target2 = m2duty * m.rev2;
 
-	// 滑らかな変化を適用
-	if (MOTOR_BLUNT())
+	// 値が更新された場合のみモーター出力を変更
+	// モーター1の出力設定
+	if (m.duty1 >= 0)
 	{
-		// 値が更新された場合のみモーター出力を変更
-		// モーター1の出力設定
-		if (m.duty1 >= 0)
-		{
-			analogWrite(MZ_M1_PWM1, map(m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
-			analogWrite(MZ_M1_PWM2, 0);
-		}
-		else
-		{
-			analogWrite(MZ_M1_PWM1, 0);
-			analogWrite(MZ_M1_PWM2, map(-m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
-		}
-
-		// モーター2の出力設定
-		if (m.duty2 >= 0)
-		{
-			analogWrite(MZ_M2_PWM1, map(m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
-			analogWrite(MZ_M2_PWM2, 0);
-		}
-		else
-		{
-			analogWrite(MZ_M2_PWM1, 0);
-			analogWrite(MZ_M2_PWM2, map(-m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
-		}
+		analogWrite(MZ_M1_PWM1, map(m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
+		analogWrite(MZ_M1_PWM2, 0);
 	}
+	else
+	{
+		analogWrite(MZ_M1_PWM1, 0);
+		analogWrite(MZ_M1_PWM2, map(-m.duty1, 0, MAX_DUTY, 0, PWM_MAX));
+	}
+
+	// モーター2の出力設定
+	if (m.duty2 >= 0)
+	{
+		analogWrite(MZ_M2_PWM1, map(m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
+		analogWrite(MZ_M2_PWM2, 0);
+	}
+	else
+	{
+		analogWrite(MZ_M2_PWM1, 0);
+		analogWrite(MZ_M2_PWM2, map(-m.duty2, 0, MAX_DUTY, 0, PWM_MAX));
+	}
+
+	// モーターの滑らかな制御を実行
+	MOTOR_BLUNT();
 }
