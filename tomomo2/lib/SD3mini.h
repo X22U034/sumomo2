@@ -2,5 +2,9 @@
 #pragma once
 
 #include "fast_digital_rw.hpp"
-#include "IO.h"
-#include "MOTOR.h"
+
+#include "Assign.h"
+#include "Config.h"
+
+#include "MOTOR/Driver.h"
+#include "MOTOR/Control.h"
