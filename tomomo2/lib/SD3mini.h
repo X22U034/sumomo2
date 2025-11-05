@@ -11,6 +11,7 @@
 
 #include "Assign.h"
 #include "Config.h"
+#include "GPIO.h"
 
 #include "MMI/Buzzer.h"
 #include "MMI/LED.h"
