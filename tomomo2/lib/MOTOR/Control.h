@@ -10,7 +10,7 @@ typedef struct
 	int8_t dir1; // 回転方向(正転|逆転)[1|-1]
 	int8_t dir2; // 回転方向(正転|逆転)[1|-1]
 	int limit;	 // duty最大値の制限[0~1000]
-	int ramp;		 // 1msあたりに変化するduty増減値(duty/ms)
+	int ramp;	 // 1msあたりに変化するduty増減値(duty/ms)
 } MOTOR;
 MOTOR M;
 
@@ -21,7 +21,7 @@ typedef struct
 	int m2; // duty[-1000~1000]
 } DUTY;
 DUTY Duty; // 目標値
-DUTY _d;	 // 制御用
+DUTY _d;   // 制御用
 
 /*
 //モーターの回転許可()[0|1]
@@ -163,7 +163,7 @@ DUTY MOTOR_RAMP(DUTY target)
 		{
 			_d.m1 += M.ramp;
 			if (_d.m1 > target.m1) // target.m1を加算して超えた場合
-				_d.m1 = target.m1;	 // 目標値と揃える
+				_d.m1 = target.m1; // 目標値と揃える
 		}
 		else if (_d.m1 > target.m1)
 		{
@@ -176,7 +176,7 @@ DUTY MOTOR_RAMP(DUTY target)
 		{
 			_d.m2 += M.ramp;
 			if (_d.m2 > target.m2) // target.m2を加算して超えた場合
-				_d.m2 = target.m2;	 // 目標値と揃える
+				_d.m2 = target.m2; // 目標値と揃える
 		}
 		else if (_d.m2 > target.m2)
 		{
