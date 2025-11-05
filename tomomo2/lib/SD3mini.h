@@ -12,5 +12,11 @@
 #include "Assign.h"
 #include "Config.h"
 
+#include "MMI/Buzzer.h"
+#include "MMI/LED.h"
+#include "MMI/Switch.h"
+#include "MMI/MUSIC/Score.h"
+#include "MMI/MUSIC/Player.h"
+
 #include "MOTOR/Driver.h"
 #include "MOTOR/Control.h"
