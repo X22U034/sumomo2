@@ -1,4 +1,4 @@
-#define DEBUG_MODE // デバッグモード有効化
+#define DEBUG_MODE		 // デバッグモード有効化
 #include "lib/SD3mini.h" // SD3miniライブラリ
 
 // --- ピン定義 ---
@@ -108,7 +108,7 @@ void loop()
 			if (action_step >= action_total_steps)
 			{
 				in_action = false;
-				set_duty(0, 0);
+				SET_DUTY(0, 0);
 				return;
 			}
 
@@ -128,12 +128,12 @@ void loop()
 
 		if (action_step == 0)
 		{
-			set_duty(-1000, -1000); // 後退
+			SET_DUTY(-1000, -1000); // 後退
 			action_duration = 100;
 		}
 		else if (action_step == 1)
 		{
-			set_duty(1000, -1000); // 右旋回
+			SET_DUTY(1000, -1000); // 右旋回
 			action_duration = 75;
 		}
 	}
@@ -144,34 +144,34 @@ void loop()
 
 		if (action_step == 0)
 		{
-			set_duty(-1000, -1000); // 後退
+			SET_DUTY(-1000, -1000); // 後退
 			action_duration = 100;
 		}
 		else if (action_step == 1)
 		{
-			set_duty(-1000, 1000); // 左旋回
+			SET_DUTY(-1000, 1000); // 左旋回
 			action_duration = 75;
 		}
 	}
 	else if (!dr(SL1) && !dr(SR1))
 	{
-		set_duty(1000, 1000); // 相手検知 → 突進
+		SET_DUTY(1000, 1000); // 相手検知 → 突進
 	}
 	else if (!dr(SL1))
 	{
-		set_duty(-100, 1000); // 相手左検知 → 左旋回
+		SET_DUTY(-100, 1000); // 相手左検知 → 左旋回
 	}
 	else if (!dr(SR1))
 	{
-		set_duty(1000, -100); // 相手右検知 → 右旋回
+		SET_DUTY(1000, -100); // 相手右検知 → 右旋回
 	}
 	else if (dr(SL2))
 	{
-		set_duty(-1000, 1000); // 相手左検知 → 左旋回
+		SET_DUTY(-1000, 1000); // 相手左検知 → 左旋回
 	}
 	else if (dr(SR2))
 	{
-		set_duty(1000, -1000); // 相手右検知 → 右旋回
+		SET_DUTY(1000, -1000); // 相手右検知 → 右旋回
 	}
 	else
 	{
@@ -184,16 +184,16 @@ void loop()
 		{
 			if (phase == 0)
 			{
-				set_duty(600, 0); // 左タイヤのみ動かす
+				SET_DUTY(600, 0); // 左タイヤのみ動かす
 			}
 			else
 			{
-				set_duty(0, 600); // 右タイヤのみ動かす
+				SET_DUTY(0, 600); // 右タイヤのみ動かす
 			}
 		}
 		else
 		{
-			set_duty(0, 0); // 間欠以外は停止（必要なら低速前進に変更）
+			SET_DUTY(0, 0); // 間欠以外は停止（必要なら低速前進に変更）
 		}
 	}
 }
