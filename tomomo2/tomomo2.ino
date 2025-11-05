@@ -1,8 +1,9 @@
+#define DEBUG_MODE // デバッグモード有効化
 #include "lib/SD3mini.h" // SD3miniライブラリ
 
 // --- ピン定義 ---
 #define BTN1 6 // プッシュボタン1
-#define FSL 4	 // 床センサー左
+#define FSL 4  // 床センサー左
 #define FSR A4 // 床センサー右
 
 #define SL1 A3 // 対物センサー左
@@ -11,9 +12,9 @@
 #define SL2 A0 // クロス対物センサー左
 
 // --- グローバル変数 ---
-unsigned long action_start = 0;		 // アクション開始時刻
+unsigned long action_start = 0;	   // アクション開始時刻
 unsigned long action_duration = 0; // アクション時間
-bool in_action = false;						 // アクション中フラグ
+bool in_action = false;			   // アクション中フラグ
 
 int action_step = 0; // 現在のステップ番号
 int action_total_steps = 0;
@@ -25,12 +26,19 @@ unsigned long timer_start = 0;
 
 // 間欠運転用（追加）
 const unsigned long INTERVAL_MS = 2000; // 2秒間隔
-const unsigned long PULSE_MS = 100;			// 100msだけ動作
+const unsigned long PULSE_MS = 100;		// 100msだけ動作
 unsigned long intermittentStart = 0;
 
 void setup()
 {
-	Serial.begin(9600);
+#if __DEBUG__
+	Serial.println("Debug Mode Enabled");
+	Serial.begin(2000000);
+	// Serial接続待機
+	while (!Serial)
+		;
+#endif
+
 	// ピンモード設定
 	pinMode(SL1, INPUT_PULLUP);
 	pinMode(SR1, INPUT_PULLUP);
@@ -43,8 +51,8 @@ void setup()
 
 	timer_start = millis(); // スタートルーチン開始時刻
 
-	SETUP_MOTOR();					 // モーター初期設定
-	SET_MOTOR_RAMP(10);			 // モーターの加減速設定
+	SETUP_MOTOR();			 // モーター初期設定
+	SET_MOTOR_RAMP(50);		 // モーターの加減速設定
 	SET_MOTOR_RECHARGE(5);	 // モーターリミッター設定
 	SET_MOTOR_REVERSE(1, 1); // モーター反転設定 変更なし
 
