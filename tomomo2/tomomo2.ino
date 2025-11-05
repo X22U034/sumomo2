@@ -1,4 +1,5 @@
 #define DEBUG_MODE		 // デバッグモード有効化
+#define MINIZADE
 #include "lib/SD3mini.h" // SD3miniライブラリ
 
 // --- ピン定義 ---
@@ -51,10 +52,10 @@ void setup()
 
 	timer_start = millis(); // スタートルーチン開始時刻
 
-	SETUP_MOTOR();			 // モーター初期設定
-	SET_MOTOR_RAMP(50);		 // モーターの加減速設定
-	SET_MOTOR_RECHARGE(5);	 // モーターリミッター設定
-	SET_MOTOR_REVERSE(1, 1); // モーター反転設定 変更なし
+	SET_MOTOR_RAMP(50);	   // モーターの加減速設定
+	SET_MOTOR_RECHARGE(5); // モーターリミッター設定
+	SET_MOTOR_REVERSE(0);  // モーター反転設定 変更なし
+	SET_MD_TYPE(OUT_DIR_4);
 
 	while (dr(BTN1))
 	{
@@ -196,4 +197,11 @@ void loop()
 			SET_DUTY(0, 0); // 間欠以外は停止（必要なら低速前進に変更）
 		}
 	}
+#if __DEBUG__
+	Serial.print("M1 Duty: ");
+	Serial.print(GET_M1_DUTY());
+	Serial.print(" M2 Duty: ");
+	Serial.print(GET_M2_DUTY());
+	Serial.println();
+#endif
 }
