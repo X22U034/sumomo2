@@ -1,11 +1,12 @@
-const uint8_t L1 = 3;   // 左モーター IN1
-const uint8_t L2 = 11;  // 左モーター IN2
-const uint8_t R1 = 9;   // 右モーター IN1
-const uint8_t R2 = 10;  // 右モーター IN2　
-const uint8_t OSR = A2; // 対物センサー右
-const uint8_t OSL = A3; // 対物センサー左
-const uint8_t FSR = A4; // 床センサー右
-const uint8_t FSL = A5;  // 床センサー左
+#define L1 3   // 左モーター IN1
+#define L2 11  // 左モーター IN2
+#define R1 9   // 右モーター IN1
+#define R2 10  // 右モーター IN2　
+#define OSR A2 // 対物センサー右
+#define OSL A3 // 対物センサー左
+#define FSR A4 // 床センサー右
+#define FSL A5  // 床センサー左
+#define ST 4  // スタートモジュール
 
 #define MAX_DUTY 900
 #define PWM_MAX  255
