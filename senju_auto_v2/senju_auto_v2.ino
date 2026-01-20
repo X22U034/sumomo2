@@ -1,15 +1,22 @@
-#define L1 3    // 左モーター IN1
-#define L2 11   // 左モーター IN2
-#define R1 9    // 右モーター IN1
-#define R2 10   // 右モーター IN2　
-#define OSR A2  // 対物センサー右
-#define OSL A3  // 対物センサー左
+#define ML1 3    // 左モーター IN1
+#define ML2 11   // 左モーター IN2
+#define MR1 9    // 右モーター IN1
+#define MR2 10   // 右モーター IN2
+
+#define SL1 A3  // 対物センサー 前方左
+#define SR1 A2  // 対物センサー 前方右
+#define SL2 4  // 対物センサー 斜め左
+#define SR2 5  // 対物センサー 斜め右
+
+#define BTN 6 // ボタン
+#define BUZZER 13
+
 #define FSR A4  // 床センサー右
 #define FSL A5  // 床センサー左
-#define ST 4    // スタートモジュール
+//#define ST A7    // スタートモジュール 4 => A7
 
 #define MAX_DUTY 900
-#define PWM_MAX 255
+#define PWM_MAX 242 // 255 * 0.9
 
 // タイマー制御用変数
 unsigned long start_ms = 0;
@@ -17,59 +24,95 @@ unsigned long now_ms = 0;  // 現在時刻取得
 
 void set_duty(int L, int R) {
   if (L >= 0) {
-    analogWrite(L1, map(L, 0, MAX_DUTY, 0, PWM_MAX));
-    analogWrite(L2, 0);
+    analogWrite(ML1, map(L, 0, MAX_DUTY, 0, PWM_MAX));
+    analogWrite(ML2, 0);
   } else {
-    analogWrite(L1, 0);
-    analogWrite(L2, map(-L, 0, MAX_DUTY, 0, PWM_MAX));
+    analogWrite(ML1, 0);
+    analogWrite(ML2, map(-L, 0, MAX_DUTY, 0, PWM_MAX));
   }
 
   if (R >= 0) {
-    analogWrite(R1, map(R, 0, MAX_DUTY, 0, PWM_MAX));
-    analogWrite(R2, 0);
+    analogWrite(MR1, map(R, 0, MAX_DUTY, 0, PWM_MAX));
+    analogWrite(MR2, 0);
   } else {
-    analogWrite(R1, 0);
-    analogWrite(R2, map(-R, 0, MAX_DUTY, 0, PWM_MAX));
+    analogWrite(MR1, 0);
+    analogWrite(MR2, map(-R, 0, MAX_DUTY, 0, PWM_MAX));
   }
 }
 
-void stopMove() {
-  set_duty(0, 0);
+void sensorCheck() {
+  int sl1 = !digitalRead(SL1);
+  int sr1 = !digitalRead(SR1);
+  int sl2 = digitalRead(SL2);
+  int sr2 = digitalRead(SR2);
+  int fsr = analogRead(FSR);
+  int fsl = analogRead(FSL);
+
+  Serial.print("SL1:");
+  Serial.print(sl1);
+  Serial.print(" SR1:");
+  Serial.print(sr1);
+
+  Serial.print(" SL2:");
+  Serial.print(sl2);
+  Serial.print(" SR2:");
+  Serial.print(sr2);
+
+  Serial.print(" FSR:");
+  Serial.print(fsr);
+  Serial.print(" FSL:");
+  Serial.print(fsl);
+  Serial.println();
+
+  // --- どれか反応したら鳴らす ---
+  if (sl1 || sr1 || sl2 || sr2 || fsr <= 736 || fsl <= 736) {
+    digitalWrite(BUZZER, HIGH);
+    delay(1);
+    digitalWrite(BUZZER, LOW);
+  } else {
+    digitalWrite(BUZZER, LOW);
+  }
+  delay(100);
 }
 
 void setup() {
   Serial.begin(9600);
   while (!Serial) {}
 
-  pinMode(L1, OUTPUT);
-  pinMode(L2, OUTPUT);
-  pinMode(R1, OUTPUT);
-  pinMode(R2, OUTPUT);
-  pinMode(OSR, INPUT);
-  pinMode(OSL, INPUT);
-  pinMode(FSR, INPUT);
-  pinMode(FSL, INPUT);
+  pinMode(ML1, OUTPUT);
+  pinMode(ML2, OUTPUT);
+  pinMode(MR1, OUTPUT);
+  pinMode(MR2, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
 
-  // ----------------------------------------
-  // 電源ON → 5秒待機
-  // ----------------------------------------
-  //stopMove();        // 念のためモーターを停止
-  //delay(5000);       // ここで5秒待つ
+  pinMode(SL1, INPUT_PULLUP);
+  pinMode(SR1, INPUT_PULLUP);
+  pinMode(SL2, INPUT_PULLUP);
+  pinMode(SR2, INPUT_PULLUP);
+ 
+  pinMode(BTN, INPUT_PULLUP);
+
+  pinMode(FSR, INPUT_PULLUP);
+  pinMode(FSL, INPUT_PULLUP);
+
+  set_duty(0, 0); // 念のためモーターを停止
+
+  while (digitalRead(BTN)) {
+    sensorCheck();
+  }
+  delay(5000); // ここで5秒待つ
 }
-
 
 void loop() {
   // 現在時刻更新
   now_ms = millis();
 
   // スタート信号読み込み
-  int st_module = digitalRead(ST);
+  // int st_module = 1;
 
-  //ゴー信号受信
-  if (st_module == 1) {
-    // ------------------------------------------------
+  // ゴー信号受信
+  // if (st_module == 1) {
     // ① 白線センサー（最優先）
-    // ------------------------------------------------
     int fsrVal = analogRead(FSR);
     int fslVal = analogRead(FSL);
     bool lineRight = (fsrVal <= 736);
@@ -80,8 +123,8 @@ void loop() {
       set_duty(0, 0);
       delay(25);
 
-      // バック
-      set_duty(-500, -500);
+      // バック 
+      set_duty(-400, -400);
       delay(100);
       set_duty(-900, -900);  // 最終duty
       delay(200);
@@ -126,15 +169,12 @@ void loop() {
       delay(25);
     }
 
-
-    // ------------------------------------------------
     // ② 対物センサー処理（反応中はループ）
-    // ------------------------------------------------
-    int osr = !digitalRead(OSR);  // 対物センサー右
-    int osl = !digitalRead(OSL);  // 対物センサー左
+    int SR1 = !digitalRead(SR1);  // 対物センサー右
+    int SL1 = !digitalRead(SL1);  // 対物センサー左
 
     // --- 両方反応 → 加速 ---
-    if (osr && osl) {
+    if (SR1 && SL1) {
       // タイマー開始
       if (start_ms == 0) {
         start_ms = now_ms;
@@ -147,7 +187,7 @@ void loop() {
       }
     }
     // --- 左反応 → 左旋回 ---
-    else if (osl) {
+    else if (SL1) {
       // タイマー開始
       if (start_ms == 0) {
         start_ms = now_ms;
@@ -164,7 +204,7 @@ void loop() {
       }
     }
       // --- 右反応 → 右旋回 ---
-      else if (osr) {
+      else if (SR1) {
         // タイマー開始
         if (start_ms == 0) {
           start_ms = now_ms;
@@ -188,21 +228,15 @@ void loop() {
     }
 
 
-    // ------------------------------------------------
     // デバッグ
-    // ------------------------------------------------
-    Serial.print("OSR: ");
-    Serial.print(osr);
-    Serial.print(" | OSL: ");
-    Serial.print(osl);
+    Serial.print("SR1: ");
+    Serial.print(SR1);
+    Serial.print(" | SL1: ");
+    Serial.print(SL1);
     Serial.print(" | FSR: ");
     Serial.print(fsrVal);
     Serial.print(" | FSL: ");
     Serial.print(fslVal);
     Serial.println();
-  } else {  //レディーもしくはストップ信号受信時
-    stopMove();
-    delay(200);  // チャタリング防止
-    return;
-  }
+  // } 
 }
