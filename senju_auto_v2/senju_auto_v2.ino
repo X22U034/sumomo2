@@ -19,7 +19,7 @@
 #define FSR A4
 #define FSL A5
 
-#define PROPO_TRG A0  // trigger
+#define PROPO2 A0  // trigger
 #define ST_MODULE A1  // start module
 
 /* ==== PARAM ==== */
@@ -27,7 +27,7 @@
 #define MAX_PWM 255
 #define MOTOR_RAMP 30
 #define LINE_TH 777
-// #define ST_MOD_TH 512
+#define PROPO_TRG_TH 1750
 
 #define DIR_L -1
 #define DIR_R 1
@@ -41,6 +41,7 @@ int sl1, sr1, sl2, sr2;
 int fsl, fsr;
 int lineL, lineR;
 int propo_trg;
+int propo;
 int st_module;
 // int sensor_state[15]=0;
 
@@ -60,7 +61,9 @@ void read_sensors() {
   lineL = (fsl <= LINE_TH);
   lineR = (fsr <= LINE_TH);
 
-  propo_trg = pulseIn(PROPO_TRG, HIGH, 30000);
+  propo_trg = pulseIn(PROPO2, HIGH, 35000);
+  propo = (propo_trg >= PROPO_TRG_TH);
+
   st_module = digitalRead(ST_MODULE);
 }
 
@@ -170,6 +173,8 @@ void debug_print() {
   Serial.print(lineR);
   Serial.print(" propo_trg:");
   Serial.print(propo_trg);
+  Serial.print(" propo:");
+  Serial.print(propo);
   Serial.print(" st_module:");
   Serial.print(st_module);
   Serial.println();
@@ -180,18 +185,18 @@ void sensor_check() {
   read_sensors();
   debug_print();
 
-  if (sl1 || sr1 || sl2 || sr2 || lineL || lineR) {
+  if (sl1 || sr1 || sl2 || sr2 || lineL || lineR || propo) {
     digitalWrite(BUZZER, HIGH);
     delay(1);
     digitalWrite(BUZZER, LOW);
   }
-  delay(200);
+  //delay(200);
 }
 
 /* ==== SETUP ==== */
 void setup() {
 #ifdef debug_mode
-  Serial.begin(9600);
+  Serial.begin(2000000);
 #endif
 
   pinMode(MDL1, OUTPUT);
@@ -207,8 +212,7 @@ void setup() {
 
   pinMode(BTN, INPUT_PULLUP);
   pinMode(ST_MODULE, INPUT_PULLUP);
-  pinMode(PROPO_TRG, INPUT_PULLUP);
-
+  pinMode(PROPO2, INPUT);
 
   set_duty(0, 0);
 
