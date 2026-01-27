@@ -1,4 +1,4 @@
-// #define debug_mode
+#define debug_mode
 
 #include <Arduino.h>
 
@@ -13,106 +13,138 @@
 #define SL2 4
 #define SR2 5
 
-#define BTN 6
+#define BTN 6  // push button
 #define BUZZER 13
 
 #define FSR A4
 #define FSL A5
 
+#define PROPO_TRG A0  // trigger
+#define ST_MODULE A1  // start module
+
 /* ==== PARAM ==== */
 #define MAX_DUTY 900
-#define PWM_MAX 242
+#define MAX_PWM 255
 #define MOTOR_RAMP 30
-#define LINE_TH 767
+#define LINE_TH 777
+// #define ST_MOD_TH 512
 
-#define L -1
-#define R  1
+#define DIR_L -1
+#define DIR_R 1
+
+/* ==== AVOID STATE ==== */
+bool line_active = false;
+int line_dir = 0;
 
 /* ==== SENSOR STATE ==== */
 int sl1, sr1, sl2, sr2;
-int fsr, fsl;
+int fsl, fsr;
 int lineL, lineR;
+int propo_trg;
+int st_module;
+// int sensor_state[15]=0;
 
 /* ==== MOTOR STATE ==== */
-int curL = 0, curR = 0;
-int tgtL = 0, tgtR = 0;
-unsigned long ramp_ms = 0;
-
-/* ==== AVOID STATE ==== */
-int TURN_DIR = 0;
-unsigned long start_ms = 0;
+int m1_current = 0, m2_current = 0;
+int m1_target = 0, m2_target = 0;
 
 /* ==== SENSOR ==== */
 void read_sensors() {
   sl1 = !digitalRead(SL1);
   sr1 = !digitalRead(SR1);
-  sl2 =  digitalRead(SL2);
-  sr2 =  digitalRead(SR2);
+  sl2 = digitalRead(SL2);
+  sr2 = digitalRead(SR2);
 
   fsr = analogRead(FSR);
   fsl = analogRead(FSL);
-
   lineL = (fsl <= LINE_TH);
   lineR = (fsr <= LINE_TH);
+
+  propo_trg = pulseIn(PROPO_TRG, HIGH, 30000);
+  st_module = digitalRead(ST_MODULE);
 }
 
 /* ==== MOTOR ==== */
 void motor_ramp() {
+  static unsigned long ramp_ms = 0;
   if (millis() - ramp_ms < 1) return;
   ramp_ms = millis();
 
-  if (curL < tgtL) curL += MOTOR_RAMP;
-  if (curL > tgtL) curL -= MOTOR_RAMP;
-  if (curR < tgtR) curR += MOTOR_RAMP;
-  if (curR > tgtR) curR -= MOTOR_RAMP;
+  if (m1_current < m1_target) m1_current += MOTOR_RAMP;
+  if (m1_current > m1_target) m1_current -= MOTOR_RAMP;
+  if (m2_current < m2_target) m2_current += MOTOR_RAMP;
+  if (m2_current > m2_target) m2_current -= MOTOR_RAMP;
 
-  curL = constrain(curL, -MAX_DUTY, MAX_DUTY);
-  curR = constrain(curR, -MAX_DUTY, MAX_DUTY);
+  m1_current = constrain(m1_current, -MAX_DUTY, MAX_DUTY);
+  m2_current = constrain(m2_current, -MAX_DUTY, MAX_DUTY);
 }
 
 void motor_out() {
-  if (curL >= 0) {
-    analogWrite(MDL1, map(curL, 0, MAX_DUTY, 0, PWM_MAX));
+  if (m1_current >= 0) {
+    analogWrite(MDL1, map(m1_current, 0, MAX_DUTY, 0, MAX_PWM));
     analogWrite(MDL2, 0);
   } else {
     analogWrite(MDL1, 0);
-    analogWrite(MDL2, map(-curL, 0, MAX_DUTY, 0, PWM_MAX));
+    analogWrite(MDL2, map(-m1_current, 0, MAX_DUTY, 0, MAX_PWM));
   }
 
-  if (curR >= 0) {
-    analogWrite(MDR1, map(curR, 0, MAX_DUTY, 0, PWM_MAX));
+  if (m2_current >= 0) {
+    analogWrite(MDR1, map(m2_current, 0, MAX_DUTY, 0, MAX_PWM));
     analogWrite(MDR2, 0);
   } else {
     analogWrite(MDR1, 0);
-    analogWrite(MDR2, map(-curR, 0, MAX_DUTY, 0, PWM_MAX));
+    analogWrite(MDR2, map(-m2_current, 0, MAX_DUTY, 0, MAX_PWM));
   }
 }
 
 void set_duty(int m1duty, int m2duty) {
-  tgtL = constrain(m1duty, -MAX_DUTY, MAX_DUTY);
-  tgtR = constrain(m2duty, -MAX_DUTY, MAX_DUTY);
+  // 下限上限に収める
+  m1_target = constrain(m1duty, -MAX_DUTY, MAX_DUTY);
+  m2_target = constrain(m2duty, -MAX_DUTY, MAX_DUTY);
   motor_ramp();
   motor_out();
 }
 
 /* ==== LINE AVOID ==== */
-bool BACK_TURN(int dir) {
+bool back_turn(int dir) {
+  static unsigned long start_ms = 0;
+  unsigned long now_ms = millis();
+
+  if (start_ms == 0) {
+    start_ms = now_ms;
+  }
+
+  unsigned long time = now_ms - start_ms;
+
+  if (time < 150) {
+    set_duty(-300, -300);
+  } else if (time < 300) {
+    if (dir == DIR_L) set_duty(-300, 300);
+    else set_duty(300, -300);
+  } else {
+    start_ms = 0;
+    return false;
+  }
+  return true;
+}
+
+/* ==== SHORT DASH ==== */
+bool gaga() {
+  static unsigned long start_ms = 0;
   unsigned long now = millis();
 
-  if (TURN_DIR == 0) {
-    TURN_DIR = dir;
+  if (start_ms == 0) {
     start_ms = now;
   }
 
-  unsigned long t = now - start_ms;
+  unsigned long time = now - start_ms;
 
-  if (t < 100) {
-    set_duty(-800, -800);
-  } else if (t < 300) {
-    if (TURN_DIR == L) set_duty(-800, 800);
-    else               set_duty(800, -800);
+  if (time < 20) {
+    set_duty(600, 600);
+  } else if (time < 1000) {
+    set_duty(0, 0);
   } else {
-    TURN_DIR = 0;
+    start_ms = 0;
     return false;
   }
   return true;
@@ -120,18 +152,41 @@ bool BACK_TURN(int dir) {
 
 void debug_print() {
 #ifdef debug_mode
-  Serial.print("sl1:"); Serial.print(sl1);
-  Serial.print(" sr1:"); Serial.print(sr1);
-  Serial.print(" sl2:"); Serial.print(sl2);
-  Serial.print(" sr2:"); Serial.print(sr2);
-  Serial.print(" FSL:"); Serial.print(fsl);
-  Serial.print(" FSR:"); Serial.print(fsr);
-  Serial.print(" lineL:"); Serial.print(lineL);
-  Serial.print(" lineR:"); Serial.print(lineR);
+  Serial.print("sl1:");
+  Serial.print(sl1);
+  Serial.print(" sr1:");
+  Serial.print(sr1);
+  Serial.print(" sl2:");
+  Serial.print(sl2);
+  Serial.print(" sr2:");
+  Serial.print(sr2);
+  Serial.print(" FSL:");
+  Serial.print(fsl);
+  Serial.print(" FSR:");
+  Serial.print(fsr);
+  Serial.print(" lineL:");
+  Serial.print(lineL);
+  Serial.print(" lineR:");
+  Serial.print(lineR);
+  Serial.print(" propo_trg:");
+  Serial.print(propo_trg);
+  Serial.print(" st_module:");
+  Serial.print(st_module);
   Serial.println();
 #endif
 }
 
+void sensor_check() {
+  read_sensors();
+  debug_print();
+
+  if (sl1 || sr1 || sl2 || sr2 || lineL || lineR) {
+    digitalWrite(BUZZER, HIGH);
+    delay(1);
+    digitalWrite(BUZZER, LOW);
+  }
+  delay(200);
+}
 
 /* ==== SETUP ==== */
 void setup() {
@@ -151,21 +206,16 @@ void setup() {
   pinMode(SR2, INPUT_PULLUP);
 
   pinMode(BTN, INPUT_PULLUP);
+  pinMode(ST_MODULE, INPUT_PULLUP);
+  pinMode(PROPO_TRG, INPUT_PULLUP);
+
 
   set_duty(0, 0);
 
+  // セーフティ解除
   while (digitalRead(BTN)) {
-    read_sensors();
-    debug_print();
-
-    if (sl1 || sr1 || sl2 || sr2 || lineL || lineR) {
-      digitalWrite(BUZZER, HIGH);
-      delay(1);
-      digitalWrite(BUZZER, LOW);
-    }
-    delay(100);
+    sensor_check();
   }
-
   delay(5000);
 }
 
@@ -174,13 +224,26 @@ void loop() {
   read_sensors();
   debug_print();
 
-  if (lineL && BACK_TURN(L)) return;
-  if (lineR && BACK_TURN(R)) return;
+  /* ==== LINE AVOID ==== */
+  if (!line_active) {
+    if (lineL) {
+      line_active = true;
+      line_dir = DIR_R;
+    } else if (lineR) {
+      line_active = true;
+      line_dir = DIR_L;
+    }
+  }
 
-  if (sl1 && sr1)      set_duty(900, 900);
-  else if (sl1)        set_duty(250, 500);
-  else if (sr1)        set_duty(500, 250);
-  else if (sl2)        set_duty(-500, 500);
-  else if (sr2)        set_duty(500, -500);
-  else                 set_duty(250, 250);
+  if (line_active) {
+    if (back_turn(line_dir)) return;
+    line_active = false;  // 完走したら解除
+  }
+
+  if (sl1 && sr1) set_duty(1000, 1000);
+  else if (sl1) set_duty(0, 300);
+  else if (sr1) set_duty(300, 0);
+  else if (sl2) set_duty(-300, 300);
+  else if (sr2) set_duty(300, -300);
+  else gaga();
 }
