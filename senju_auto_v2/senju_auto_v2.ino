@@ -216,17 +216,31 @@ void setup() {
 
   set_duty(0, 0);
 
-  // セーフティ解除
-  while (digitalRead(BTN)) {
-    sensor_check();
+  // ==== セーフティ解除（プロポON待ち）====
+  while (true) {
+    read_sensors();
+    debug_print();
+    set_duty(0, 0);
+
+    if (propo) {   // プロポONで解除
+      digitalWrite(BUZZER, HIGH);
+      delay(50);
+      digitalWrite(BUZZER, LOW);
+      break;
+    }
   }
-  delay(5000);
 }
 
 /* ==== LOOP ==== */
 void loop() {
   read_sensors();
   debug_print();
+
+  // 走行条件を満たしていなければ停止
+  if (!propo || st_module == 0) {
+    set_duty(0, 0);
+    return;   // ← ここが超重要
+  }
 
   /* ==== LINE AVOID ==== */
   if (!line_active) {
@@ -250,4 +264,6 @@ void loop() {
   else if (sl2) set_duty(-300, 300);
   else if (sr2) set_duty(300, -300);
   else gaga();
+
+  
 }
