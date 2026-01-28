@@ -19,7 +19,7 @@
 #define FSR A4
 #define FSL A5
 
-#define PROPO2 A0  // trigger
+#define PROPO2 A0     // trigger
 #define ST_MODULE A1  // start module
 
 /* ==== PARAM ==== */
@@ -182,15 +182,11 @@ void debug_print() {
 }
 
 void sensor_check() {
-  read_sensors();
-  debug_print();
-
-  if (sl1 || sr1 || sl2 || sr2 || lineL || lineR || propo) {
+  if (sl1 || sr1 || sl2 || sr2 || lineL || lineR || propo || st_module) {
     digitalWrite(BUZZER, HIGH);
     delay(1);
     digitalWrite(BUZZER, LOW);
   }
-  //delay(200);
 }
 
 /* ==== SETUP ==== */
@@ -217,17 +213,25 @@ void setup() {
   set_duty(0, 0);
 
   // ==== セーフティ解除（プロポON待ち）====
-  while (true) {
+  // プロポON待ち
+  while (!propo) {
     read_sensors();
+    sensor_check();
     debug_print();
-    set_duty(0, 0);
+  }
 
-    if (propo) {   // プロポONで解除
-      digitalWrite(BUZZER, HIGH);
-      delay(50);
-      digitalWrite(BUZZER, LOW);
-      break;
-    }
+  digitalWrite(BUZZER, HIGH);
+  delay(50);
+  digitalWrite(BUZZER, LOW);
+  delay(50);
+  digitalWrite(BUZZER, HIGH);
+  delay(50);
+  digitalWrite(BUZZER, LOW);
+  delay(50);
+
+  // プロポON後、スタートモジュール待ち
+  while (!st_module) {
+    read_sensors();
   }
 }
 
@@ -236,10 +240,11 @@ void loop() {
   read_sensors();
   debug_print();
 
-  // 走行条件を満たしていなければ停止
-  if (!propo || st_module == 0) {
+  // 走行条件を満たしていれば停止
+  if (propo || st_module == 0) {
     set_duty(0, 0);
-    return;   // ← ここが超重要
+    while (1)
+      ;
   }
 
   /* ==== LINE AVOID ==== */
@@ -264,6 +269,4 @@ void loop() {
   else if (sl2) set_duty(-300, 300);
   else if (sr2) set_duty(300, -300);
   else gaga();
-
-  
 }
