@@ -1,4 +1,4 @@
-#define debug_mode
+// #define debug_mode
 
 #include <Arduino.h>
 
@@ -13,19 +13,18 @@
 #define SL2 4
 #define SR2 5
 
-#define BTN 6  // push button
 #define BUZZER 13
 
 #define FSR A4
 #define FSL A5
 
-#define PROPO2 A0     // trigger
+#define PROPO2 A0     // trigger (RC PWM input)
 #define ST_MODULE A1  // start module
 
 /* ==== PARAM ==== */
 #define MAX_DUTY 900
 #define MAX_PWM 255
-#define MOTOR_RAMP 30
+#define MOTOR_RAMP 3
 #define LINE_TH 777
 #define PROPO_TRG_TH 1750
 
@@ -43,11 +42,30 @@ int lineL, lineR;
 int propo_trg;
 int propo;
 int st_module;
-// int sensor_state[15]=0;
 
 /* ==== MOTOR STATE ==== */
 int m1_current = 0, m2_current = 0;
 int m1_target = 0, m2_target = 0;
+
+/* ==== PROPO (PCINT) ==== */
+volatile uint16_t propo_us = 0;           // 最新パルス幅[us]
+volatile uint32_t propo_rise_us = 0;      // 立ち上がり時刻[micros]
+volatile uint32_t propo_last_update = 0;  // 更新時刻[micros]
+
+// Port C (A0-A5) のピン変化割り込み
+ISR(PCINT1_vect) {
+  // A0 = PC0 = PCINT8
+  if (PINC & _BV(0)) {  // HIGH: rising
+    propo_rise_us = micros();
+  } else {  // LOW: falling
+    uint32_t w = micros() - propo_rise_us;
+    // 一般的なRCは1000-2000us。上限だけ軽くガード
+    if (w <= 3000) {
+      propo_us = (uint16_t)w;
+      propo_last_update = micros();
+    }
+  }
+}
 
 /* ==== SENSOR ==== */
 void read_sensors() {
@@ -56,13 +74,29 @@ void read_sensors() {
   sl2 = digitalRead(SL2);
   sr2 = digitalRead(SR2);
 
-  fsr = analogRead(FSR);
-  fsl = analogRead(FSL);
-  lineL = (fsl <= LINE_TH);
-  lineR = (fsr <= LINE_TH);
+  // fsr = analogRead(FSR);
+  // fsl = analogRead(FSL);
+  // lineL = (fsl <= LINE_TH);
+  // lineR = (fsr <= LINE_TH);
+  lineL = 0;
+  lineR = 0;
 
-  propo_trg = pulseIn(PROPO2, HIGH, 35000);
-  propo = (propo_trg >= PROPO_TRG_TH);
+  // ---- PROPO: 割り込みで取った値をコピー（ノンブロッキング）----
+  uint16_t p;
+  uint32_t last;
+  noInterrupts();
+  p = propo_us;
+  last = propo_last_update;
+  interrupts();
+
+  propo_trg = (int)p;
+
+  // フェイルセーフ：一定時間更新が無ければOFF扱い
+  if ((uint32_t)(micros() - last) > 60000UL) {  // 60ms以上更新なし
+    propo = 0;
+  } else {
+    propo = (propo_trg >= PROPO_TRG_TH);
+  }
 
   st_module = digitalRead(ST_MODULE);
 }
@@ -101,7 +135,6 @@ void motor_out() {
 }
 
 void set_duty(int m1duty, int m2duty) {
-  // 下限上限に収める
   m1_target = constrain(m1duty, -MAX_DUTY, MAX_DUTY);
   m2_target = constrain(m2duty, -MAX_DUTY, MAX_DUTY);
   motor_ramp();
@@ -113,9 +146,7 @@ bool back_turn(int dir) {
   static unsigned long start_ms = 0;
   unsigned long now_ms = millis();
 
-  if (start_ms == 0) {
-    start_ms = now_ms;
-  }
+  if (start_ms == 0) start_ms = now_ms;
 
   unsigned long time = now_ms - start_ms;
 
@@ -136,13 +167,11 @@ bool gaga() {
   static unsigned long start_ms = 0;
   unsigned long now = millis();
 
-  if (start_ms == 0) {
-    start_ms = now;
-  }
+  if (start_ms == 0) start_ms = now;
 
   unsigned long time = now - start_ms;
 
-  if (time < 20) {
+  if (time < 60) {
     set_duty(600, 600);
   } else if (time < 1000) {
     set_duty(0, 0);
@@ -206,14 +235,16 @@ void setup() {
   pinMode(SL2, INPUT_PULLUP);
   pinMode(SR2, INPUT_PULLUP);
 
-  pinMode(BTN, INPUT_PULLUP);
   pinMode(ST_MODULE, INPUT_PULLUP);
   pinMode(PROPO2, INPUT);
+
+  // ---- PCINT enable for A0 (PC0 = PCINT8) ----
+  PCICR |= _BV(PCIE1);    // Port C のピン変化割り込み許可
+  PCMSK1 |= _BV(PCINT8);  // A0 を監視対象に
 
   set_duty(0, 0);
 
   // ==== セーフティ解除（プロポON待ち）====
-  // プロポON待ち
   while (!propo) {
     read_sensors();
     sensor_check();
@@ -237,14 +268,15 @@ void setup() {
 
 /* ==== LOOP ==== */
 void loop() {
+  static bool mode_attack = false;
   read_sensors();
   debug_print();
 
-  // 走行条件を満たしていれば停止
-  if (propo || st_module == 0) {
+  // 安全停止：プロポOFF または スタート未投入なら停止
+  if (propo || !st_module) {
+    while (1){
     set_duty(0, 0);
-    while (1)
-      ;
+    }
   }
 
   /* ==== LINE AVOID ==== */
@@ -260,13 +292,22 @@ void loop() {
 
   if (line_active) {
     if (back_turn(line_dir)) return;
-    line_active = false;  // 完走したら解除
+    line_active = false;
   }
 
   if (sl1 && sr1) set_duty(1000, 1000);
-  else if (sl1) set_duty(0, 300);
-  else if (sr1) set_duty(300, 0);
-  else if (sl2) set_duty(-300, 300);
-  else if (sr2) set_duty(300, -300);
-  else gaga();
+  else if (sl1) {
+    set_duty(-300, 600);
+    mode_attack = true;
+  } else if (sr1) {
+    set_duty(600, -300);
+    mode_attack = true;
+  } else if (sl2) set_duty(-600, 600);
+  else if (sr2) set_duty(600, -600);
+  else {
+    if (mode_attack)
+      set_duty(600, 600);
+    else
+      gaga();
+  }
 }
