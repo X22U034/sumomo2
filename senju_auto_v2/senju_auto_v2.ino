@@ -78,8 +78,6 @@ void read_sensors() {
   fsl = analogRead(FSL);
   lineL = (fsl <= LINE_TH);
   lineR = (fsr <= LINE_TH);
-  // lineL = 0;
-  // lineR = 0;
 
   // ---- PROPO: 割り込みで取った値をコピー（ノンブロッキング）----
   uint16_t p;
@@ -272,7 +270,7 @@ void loop() {
   read_sensors();
   debug_print();
 
-  // 安全停止：プロポOFF または スタート未投入なら停止
+  // 安全停止：プロポ または モジュールSTOPで停止
   if (propo || !st_module) {
     while (1){
     set_duty(0, 0);
@@ -293,7 +291,6 @@ void loop() {
       line_dir = DIR_L;
     }
   }
-
 
   if (sl1 && sr1) set_duty(1000, 1000);
   else if (sl1) {
