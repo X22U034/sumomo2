@@ -22,7 +22,7 @@
 #define ST_MODULE A1  // start module
 
 /* ==== PARAM ==== */
-#define MAX_DUTY 900
+#define MAX_DUTY 500
 #define MAX_PWM 255
 #define MOTOR_RAMP 3
 #define LINE_TH 777
@@ -74,12 +74,12 @@ void read_sensors() {
   sl2 = digitalRead(SL2);
   sr2 = digitalRead(SR2);
 
-  // fsr = analogRead(FSR);
-  // fsl = analogRead(FSL);
-  // lineL = (fsl <= LINE_TH);
-  // lineR = (fsr <= LINE_TH);
-  lineL = 0;
-  lineR = 0;
+  fsr = analogRead(FSR);
+  fsl = analogRead(FSL);
+  lineL = (fsl <= LINE_TH);
+  lineR = (fsr <= LINE_TH);
+  // lineL = 0;
+  // lineR = 0;
 
   // ---- PROPO: 割り込みで取った値をコピー（ノンブロッキング）----
   uint16_t p;
@@ -150,7 +150,7 @@ bool back_turn(int dir) {
 
   unsigned long time = now_ms - start_ms;
 
-  if (time < 150) {
+  if (time < 100) {
     set_duty(-300, -300);
   } else if (time < 300) {
     if (dir == DIR_L) set_duty(-300, 300);
@@ -279,7 +279,11 @@ void loop() {
     }
   }
 
-  /* ==== LINE AVOID ==== */
+  if (line_active) {
+    if (back_turn(line_dir)) return;
+    line_active = false;
+  }
+
   if (!line_active) {
     if (lineL) {
       line_active = true;
@@ -290,17 +294,13 @@ void loop() {
     }
   }
 
-  if (line_active) {
-    if (back_turn(line_dir)) return;
-    line_active = false;
-  }
 
   if (sl1 && sr1) set_duty(1000, 1000);
   else if (sl1) {
-    set_duty(-300, 600);
+    set_duty(0, 600);
     mode_attack = true;
   } else if (sr1) {
-    set_duty(600, -300);
+    set_duty(600, 0);
     mode_attack = true;
   } else if (sl2) set_duty(-600, 600);
   else if (sr2) set_duty(600, -600);
